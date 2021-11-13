@@ -23,3 +23,7 @@ class Deck:
     his: str
     all: list[int]
     simple: tuple
+
+    def __init__(self, p: float, t: str) -> None:
+        self.p = p
+        self.t = t

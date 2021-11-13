@@ -147,18 +147,27 @@ def match_signature(signature: str, line: str):
     return line.lstrip().startswith(signature)
 
 
+def parse_func_definition(line):
+    strip_line = line.strip()
+    params = re.match(r'def .+\((.*)\).*:', strip_line).group(1)
+    if len(params) > 0:
+        if ',' in params:
+            params = params.split(',')
+        else:
+            params = [params]
+
+        return params
+    else:
+        return None
+
+
 def transpile_funcs(source: Source):
     res = []
     for line in source:
         res.append(line)
-        strip_line = line.strip()
-        if match_signature('def', strip_line) and not match_signature('def __setattr__', strip_line):
-            params = re.match(r'def .+\((.*)\).*:', strip_line).group(1)
-            if len(params) > 0:
-                if ',' in params:
-                    params = params.split(',')
-                else:
-                    params = [params]
+        if match_signature('def', line) and not match_signature('def __setattr__', line):
+            params = parse_func_definition(line)
+            if params:
                 res.extend(gen_checks_for_params(params, line))
 
     return res
@@ -168,15 +177,16 @@ def ident_is_more_or_equal(base_ident, line):
     return len(get_ident(line)) >= len(base_ident)
 
 
+def is_same_block(base_ident, line):
+    return ident_is_more_or_equal(base_ident, line) or line.strip() == ''
+
+
 def detect_block_end(source: Source, start_line_num):
     first_line = source[start_line_num]
     increased_ident = get_increased_ident(first_line)
     line_num = start_line_num + 1
 
-    while line_num < len(source) and source[line_num].strip() == '':
-        line_num += 1
-
-    while line_num < len(source) and ident_is_more_or_equal(increased_ident, source[line_num]):
+    while line_num < len(source) and is_same_block(increased_ident, source[line_num]):
         line_num += 1
 
     return line_num
@@ -196,6 +206,12 @@ def get_class_fields(source: Source):
                 fields.append(line)
 
     return fields
+
+
+def get_constructor_fields(source: Source):
+    for line_num, line in enumerate(source):
+        if match_signature('def __init__', line):
+            return parse_func_definition(line)
 
 
 def add_empty_line(source: Source):
@@ -218,6 +234,9 @@ def detect_setattr(source: Source):
 
 def transpile_class(source: Source):
     fields = get_class_fields(source)
+    if constructor_fields := get_constructor_fields(source):
+        fields.extend(constructor_fields)
+
     if fields:
         setattr_line_num = detect_setattr(source)
 
