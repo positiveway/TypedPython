@@ -5,8 +5,15 @@ from pathlib import Path
 import inspect
 
 
+def _concat_split(last_symbol_in_line, replacement, source):
+    return re.sub(r'(\s)*' + last_symbol_in_line + r'[\n\r](\s)*',
+                  replacement, source, flags=re.MULTILINE)
+
+
 def concat_split_expressions(source: str):
-    return re.sub(r'(\s)*[\\,][\n\r](\s)*', ' ', source, flags=re.MULTILINE)
+    source = _concat_split(r'\\', ' ', source)
+    source = _concat_split(r',', ', ', source)
+    return source
 
 
 Source = list[str]
@@ -325,7 +332,7 @@ SINGLE_IDENT = ' ' * 4
 
 if __name__ == '__main__':
     BASE_DIR = Path(__file__).parent.resolve()
-    BASE_DIR = Path(r'/home/user/PycharmProjects/BetMatcher3/BetMatcher')
+    # BASE_DIR = Path(r'/home/user/PycharmProjects/BetMatcher3/BetMatcher')
     print(BASE_DIR)
 
     BUILD_DIR = BASE_DIR / BUILD_FOLDER

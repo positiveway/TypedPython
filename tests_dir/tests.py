@@ -14,6 +14,11 @@ class NoTypeSpecified(Exception):
 
 
 class Deck:
+    def expression(self, a, b, c):
+        if a == 5 and b is True \
+                and c:
+            print('passed')
+
     mine: int
     his: str
     all: list[int]
