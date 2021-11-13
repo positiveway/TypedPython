@@ -37,6 +37,8 @@ def gen_lines_with_ident(base_ident_line, lines):
     res = []
     for line in lines:
         res.append(f'{base_ident}{line}')
+        if match_signature('if', line):
+            base_ident = get_increased_ident(base_ident)
 
     return res
 
@@ -129,13 +131,17 @@ def parse_param(param: str):
 
 def gen_check_lines(param: str, base_ident_line, class_fields):
     arg_name, arg_type = parse_param(param)
-    actual_value = arg_name
     if class_fields:
-        actual_value = f'self.{actual_value}'
+        check_lines = [
+            f'if name == "{arg_name}":',
+            f'check_type("{arg_name}", value, {arg_type})'
+        ]
+    else:
+        check_lines = [
+            f'check_type("{arg_name}", {arg_name}, {arg_type})'
+        ]
 
-    check_lines = gen_lines_with_ident(base_ident_line, [
-        f'check_type("{arg_name}", {actual_value}, {arg_type})'
-    ])
+    check_lines = gen_lines_with_ident(base_ident_line, check_lines)
     return check_lines
 
 
