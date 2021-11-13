@@ -37,7 +37,7 @@ def gen_lines_with_ident(base_ident_line, lines):
     res = []
     for line in lines:
         res.append(f'{base_ident}{line}')
-        if match_signature('if', line):
+        if match_signature('if ', line):
             base_ident = get_increased_ident(base_ident)
 
     return res
@@ -132,6 +132,7 @@ def parse_param(param: str):
 def gen_check_lines(param: str, base_ident_line, class_fields):
     arg_name, arg_type = parse_param(param)
     if class_fields:
+        arg_name = arg_name.removeprefix('self.')
         check_lines = [
             f'if name == "{arg_name}":',
             f'check_type("{arg_name}", value, {arg_type})'
@@ -159,9 +160,6 @@ def gen_checks_for_params(params: Source, base_ident_line, class_fields=False):
 
 
 def match_signature(signature: str, line: str):
-    if ' ' not in signature:  # def setattr
-        signature += ' '
-
     return line.lstrip().startswith(signature)
 
 
@@ -197,7 +195,7 @@ def transpile_funcs(source: Source):
     res = []
     for line in source:
         res.append(line)
-        if match_signature_only(signature='def', blacklist=['def __setattr__'], line=line):
+        if match_signature_only(signature='def ', blacklist=['def __setattr__'], line=line):
             params = parse_func_definition(line)
             if params:
                 res.extend(gen_checks_for_params(params, line))
@@ -256,7 +254,7 @@ def get_init_fields(source: Source):
         if match_signature('def __init__', line):
             fields = []
             init_source, _ = detect_block(source, line_num)
-            for line in init_source:
+            for line in init_source[1:]:
                 if match_signature('self.', line) and is_field(line):
                     fields.append(line)
             return fields
@@ -301,7 +299,7 @@ def transpile_classes(source: Source):
     line_num = 0
     while line_num < len(source):
         line = source[line_num]
-        if match_signature('class', line):
+        if match_signature('class ', line):
             class_source, block_end = detect_block(source, line_num)
             class_source = transpile_class(class_source)
             res.extend(class_source)
@@ -324,8 +322,9 @@ def transpile(source: str):
 
     source = source.splitlines()
 
-    source = transpile_funcs(source)
     source = transpile_classes(source)
+    source = transpile_funcs(source)
+
     source = '\n'.join(source)
 
     check_func = inspect.getsource(check_type)
