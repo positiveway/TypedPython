@@ -6,7 +6,7 @@ import inspect
 
 
 def concat_split_expressions(source: str):
-    return re.sub(r'(\s)*\\[\n\r](\s)*', ' ', source, flags=re.MULTILINE)
+    return re.sub(r'(\s)*[\\,][\n\r](\s)*', ' ', source, flags=re.MULTILINE)
 
 
 Source = list[str]
@@ -325,6 +325,7 @@ SINGLE_IDENT = ' ' * 4
 
 if __name__ == '__main__':
     BASE_DIR = Path(__file__).parent.resolve()
+    BASE_DIR = Path(r'/home/user/PycharmProjects/BetMatcher3/BetMatcher')
     print(BASE_DIR)
 
     BUILD_DIR = BASE_DIR / BUILD_FOLDER
