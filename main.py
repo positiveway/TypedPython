@@ -326,7 +326,6 @@ SINGLE_IDENT = ' ' * 4
 if __name__ == '__main__':
     BASE_DIR = Path(__file__).parent.resolve()
     print(BASE_DIR)
-    print(len(get_ident('    def')))
 
     BUILD_DIR = BASE_DIR / BUILD_FOLDER
     make_dir(BUILD_DIR)
