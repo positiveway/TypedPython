@@ -224,8 +224,19 @@ def detect_block_end(source: Source, start_line_num):
     return line_num
 
 
+def detect_block(source: Source, start_line_num):
+    block_end_line = detect_block_end(source, start_line_num)
+    block_source = source[start_line_num:block_end_line]
+    return block_source, block_end_line
+
+
 def __setattr__(self, name: str, value: Any) -> None:
     super().__setattr__(name, value)
+
+
+def is_field(line):
+    return not match_any_signature(['def', 'class'], line) \
+           and re.search(r'.+:.+', line) is not None
 
 
 def get_class_fields(source: Source):
@@ -234,17 +245,23 @@ def get_class_fields(source: Source):
 
     for line in source:
         if get_ident(line) == base_ident:
-            if not match_any_signature(['def', 'class'], line) \
-                    and re.search(r'.+:.+', line):
+            if is_field(line):
                 fields.append(line)
 
     return fields
 
 
-def get_constructor_fields(source: Source):
+def get_init_fields(source: Source):
     for line_num, line in enumerate(source):
         if match_signature('def __init__', line):
-            return parse_func_definition(line)
+            fields = []
+            init_source, _ = detect_block(source, line_num)
+            for line in init_source:
+                if match_signature('self.', line) and is_field(line):
+                    fields.append(line)
+            return fields
+
+    return []
 
 
 def add_empty_line(source: Source):
@@ -267,8 +284,8 @@ def detect_setattr(source: Source):
 
 def transpile_class(source: Source):
     fields = get_class_fields(source)
-    if constructor_fields := get_constructor_fields(source):
-        fields.extend(constructor_fields)
+    if init_fields := get_init_fields(source):
+        fields.extend(init_fields)
 
     if fields:
         setattr_line_num = detect_setattr(source)
@@ -285,8 +302,8 @@ def transpile_classes(source: Source):
     while line_num < len(source):
         line = source[line_num]
         if match_signature('class', line):
-            block_end = detect_block_end(source, line_num)
-            class_source = transpile_class(source[line_num:block_end])
+            class_source, block_end = detect_block(source, line_num)
+            class_source = transpile_class(class_source)
             res.extend(class_source)
             line_num = block_end
             continue
@@ -339,9 +356,12 @@ def filter_files(base_directory: Path):
     return res
 
 
+def get_build_dir():
+    return BASE_DIR / BUILD_FOLDER
+
+
 def get_path_in_build(filepath: Path):
-    basedir = BUILD_DIR.parent
-    return BUILD_DIR / filepath.relative_to(basedir)
+    return get_build_dir() / filepath.relative_to(BASE_DIR)
 
 
 def make_dir(dir_path):
@@ -357,7 +377,6 @@ def clean_any_content(folder: Path) -> None:
 
 
 def transpile_project(basedir: Path):
-    clean_any_content(BUILD_DIR)
     files = filter_files(basedir)
 
     for filepath in files:
@@ -382,12 +401,22 @@ ignore_list = [
 
 SINGLE_IDENT = ' ' * 4
 
-if __name__ == '__main__':
-    BASE_DIR = Path(__file__).parent.resolve()
-    BASE_DIR = Path(r'/home/user/PycharmProjects/BetMatcher3/BetMatcher')
+
+def prepare_and_transpile(base_dir):
+    global BASE_DIR
+    BASE_DIR = base_dir
     print(BASE_DIR)
 
-    BUILD_DIR = BASE_DIR / BUILD_FOLDER
-    make_dir(BUILD_DIR)
+    build_dir = get_build_dir()
+    make_dir(build_dir)
+    clean_any_content(build_dir)
 
     transpile_project(BASE_DIR)
+
+
+if __name__ == '__main__':
+    cur_project = Path(__file__).parent.resolve()
+    bet_matcher = Path(r'/home/user/PycharmProjects/BetMatcher3/BetMatcher')
+
+    prepare_and_transpile(cur_project)
+    prepare_and_transpile(bet_matcher)

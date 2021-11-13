@@ -25,5 +25,5 @@ class Deck:
     simple: tuple
 
     def __init__(self, p: float, t: str) -> None:
-        self.p = p
-        self.t = t
+        self.p: float = p
+        self.t: str = t
