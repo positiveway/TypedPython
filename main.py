@@ -104,6 +104,10 @@ class NoTypeSpecified(Exception):
     pass
 
 
+class ParsingError(Exception):
+    pass
+
+
 def parse_param(param: str):
     if ':' not in param:
         raise NoTypeSpecified()
@@ -112,7 +116,15 @@ def parse_param(param: str):
     if '=' in arg_type:
         arg_type = arg_type.split('=')[0]
 
-    return arg_name.strip(), arg_type.strip()
+    arg_name, arg_type = arg_name.strip(), arg_type.strip()
+
+    if not arg_name:
+        raise ParsingError('Argument name is empty')
+
+    if not arg_type:
+        raise ParsingError('Argument type is empty')
+
+    return arg_name, arg_type
 
 
 def gen_check_lines(param: str, base_ident_line, class_fields):
@@ -161,11 +173,25 @@ def parse_func_definition(line):
         return None
 
 
+def match_any_signature(sign_list, line):
+    for signature in sign_list:
+        if match_signature(signature, line):
+            return True
+    return False
+
+
+def match_signature_only(signature, blacklist: list[str], line: str):
+    if match_any_signature(blacklist, line):
+        return False
+
+    return match_signature(signature, line)
+
+
 def transpile_funcs(source: Source):
     res = []
     for line in source:
         res.append(line)
-        if match_signature('def', line) and not match_signature('def __setattr__', line):
+        if match_signature_only(signature='def', blacklist=['def __setattr__'], line=line):
             params = parse_func_definition(line)
             if params:
                 res.extend(gen_checks_for_params(params, line))
@@ -202,7 +228,8 @@ def get_class_fields(source: Source):
 
     for line in source:
         if get_ident(line) == base_ident:
-            if not match_signature('def', line) and ':' in line:
+            if not match_any_signature(['def', 'class'], line) \
+                    and re.search(r'.+:.+', line):
                 fields.append(line)
 
     return fields
@@ -351,7 +378,7 @@ SINGLE_IDENT = ' ' * 4
 
 if __name__ == '__main__':
     BASE_DIR = Path(__file__).parent.resolve()
-    # BASE_DIR = Path(r'/home/user/PycharmProjects/BetMatcher3/BetMatcher')
+    BASE_DIR = Path(r'/home/user/PycharmProjects/BetMatcher3/BetMatcher')
     print(BASE_DIR)
 
     BUILD_DIR = BASE_DIR / BUILD_FOLDER
