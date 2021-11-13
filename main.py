@@ -27,11 +27,10 @@ def get_increased_ident(line):
 
 def gen_lines_with_ident(base_ident_line, lines):
     base_ident = get_increased_ident(base_ident_line)
-    increased_ident = get_increased_ident(base_ident)
-    res = [f'{base_ident}{lines[0]}']
-    if len(lines) > 1:
-        for line in lines[1:]:
-            res.append(f'{increased_ident}{line}')
+    res = []
+    for line in lines:
+        res.append(f'{base_ident}{line}')
+
     return res
 
 
@@ -94,12 +93,6 @@ def check_type(arg_name, value, arg_type):
 # check_type('sdf', ['sf'], list)
 
 
-def get_base_type(arg_type: str):
-    if '[' in arg_type:
-        return arg_type[:arg_type.find('[')]
-    return arg_type
-
-
 class NoTypeSpecified(Exception):
     pass
 
@@ -112,31 +105,31 @@ def parse_param(param: str):
     if '=' in arg_type:
         arg_type = arg_type.split('=')[0]
 
-    arg_name, arg_type = arg_name.strip(), arg_type.strip()
-    arg_type = get_base_type(arg_type)
-    return arg_name, arg_type
+    return arg_name.strip(), arg_type.strip()
 
 
-def gen_check_lines(param: str, base_ident_line):
+def gen_check_lines(param: str, base_ident_line, class_fields):
     arg_name, arg_type = parse_param(param)
+    actual_value = arg_name
+    if class_fields:
+        actual_value = f'self.{actual_value}'
+
     check_lines = gen_lines_with_ident(base_ident_line, [
-        f'check_type("{arg_name}", {arg_name}, {arg_type})'
+        f'check_type("{arg_name}", {actual_value}, {arg_type})'
     ])
     return check_lines
 
 
-def gen_checks_for_params(params: Source, base_ident_line):
+def gen_checks_for_params(params: Source, base_ident_line, class_fields=False):
     res = []
     for param in params:
         try:
-            for check_line in gen_check_lines(param, base_ident_line):
+            for check_line in gen_check_lines(param, base_ident_line, class_fields):
                 res.append(check_line)
         except NoTypeSpecified:
             pass
 
-    if res:
-        res[-1] += '\n'
-
+    add_empty_line(res)
     return res
 
 
@@ -182,10 +175,8 @@ def detect_block_end(source: Source, start_line_num):
     return line_num
 
 
-class AttrClass:
-
-    def __setattr__(self, name: str, value: Any) -> None:
-        super().__setattr__(name, value)
+def __setattr__(self, name: str, value: Any) -> None:
+    super().__setattr__(name, value)
 
 
 def get_class_fields(source: Source):
@@ -200,6 +191,11 @@ def get_class_fields(source: Source):
     return fields
 
 
+def add_empty_line(source: Source):
+    if source:
+        source[-1] += '\n'
+
+
 def detect_setattr(source: Source):
     for line_num, line in enumerate(source):
         if match_signature('def __setattr__', line):
@@ -207,7 +203,8 @@ def detect_setattr(source: Source):
 
     # else
     ident_lines = gen_lines_with_ident(source[0],
-                                       inspect.getsource(AttrClass.__setattr__).splitlines())
+                                       inspect.getsource(__setattr__).splitlines())
+    add_empty_line(ident_lines)
     insert_lines(source, 1, ident_lines)
     return 1
 
@@ -217,7 +214,7 @@ def transpile_class(source: Source):
     if fields:
         setattr_line_num = detect_setattr(source)
 
-        check_lines = gen_checks_for_params(params=fields, base_ident_line=source[setattr_line_num])
+        check_lines = gen_checks_for_params(params=fields, base_ident_line=source[setattr_line_num], class_fields=True)
         insert_lines(source, setattr_line_num + 1, check_lines)
 
     return source
@@ -256,7 +253,7 @@ def transpile(source: str):
     source = '\n'.join(source)
 
     check_func = inspect.getsource(check_type)
-    source = f'{check_func}\n{source}'
+    source = f'{check_func}\n\n{source}'
 
     return source
 
