@@ -13,6 +13,11 @@ class NoTypeSpecified(Exception):
     pass
 
 
+sfd = '''
+adsfadf
+'''
+
+
 class Deck:
     def expression(self, a, b, c):
         if a == 5 and b is True \

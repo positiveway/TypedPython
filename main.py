@@ -10,9 +10,21 @@ def _concat_split(last_symbol_in_line, replacement, source):
                   replacement, source, flags=re.MULTILINE)
 
 
+def concat_multiline_strings(source: str):
+    re_multiline = re.compile("\'\'\'.*\'\'\'", flags=re.MULTILINE | re.DOTALL)
+    while match := re_multiline.search(source):
+        content = match.group(0)
+        content = re.sub('\n', '\\n', content)
+        content = re.sub(r"'''", r"'", content)
+        source = re_multiline.sub(content, source)
+
+    return source
+
+
 def concat_split_expressions(source: str):
     source = _concat_split(r'\\', ' ', source)
     source = _concat_split(r',', ', ', source)
+    # source = concat_multiline_strings(source)
     return source
 
 
@@ -101,6 +113,8 @@ def check_type(arg_name, value, arg_type):
 
 # check_type('sdf', ['sf'], list)
 
+Fields = list[tuple[str, str]]
+
 
 class NoTypeSpecified(Exception):
     pass
@@ -129,10 +143,30 @@ def parse_param(param: str):
     return arg_name, arg_type
 
 
-def gen_check_lines(param: str, base_ident_line, class_fields):
-    arg_name, arg_type = parse_param(param)
-    if class_fields:
+def parse_params(params: list[str]):
+    parsed_params = []
+    for param in params:
+        try:
+            arg_name, arg_type = parse_param(param)
+            parsed_params.append((arg_name, arg_type))
+        except NoTypeSpecified:
+            pass
+
+    return parsed_params
+
+
+def remove_self_prefix(fields: Fields):
+    res = []
+    for field in fields:
+        arg_name, arg_type = field
         arg_name = arg_name.removeprefix('self.')
+        res.append((arg_name, arg_type))
+
+    return res
+
+
+def gen_check_lines(arg_name: str, arg_type: str, base_ident_line, class_fields):
+    if class_fields:
         check_lines = [
             f'if name == "{arg_name}":',
             f'check_type("{arg_name}", value, {arg_type})'
@@ -146,14 +180,12 @@ def gen_check_lines(param: str, base_ident_line, class_fields):
     return check_lines
 
 
-def gen_checks_for_params(params: Source, base_ident_line, class_fields=False):
+def gen_checks_for_params(params: Fields, base_ident_line, class_fields=False):
     res = []
     for param in params:
-        try:
-            for check_line in gen_check_lines(param, base_ident_line, class_fields):
-                res.append(check_line)
-        except NoTypeSpecified:
-            pass
+        arg_name, arg_type = param
+        for check_line in gen_check_lines(arg_name, arg_type, base_ident_line, class_fields):
+            res.append(check_line)
 
     add_empty_line(res)
     return res
@@ -174,7 +206,7 @@ def parse_func_definition(line):
 
         return params
     else:
-        return None
+        return []
 
 
 def match_any_signature(sign_list, line):
@@ -197,6 +229,7 @@ def transpile_funcs(source: Source):
         res.append(line)
         if match_signature_only(signature='def ', blacklist=['def __setattr__'], line=line):
             params = parse_func_definition(line)
+            params = parse_params(params)
             if params:
                 res.extend(gen_checks_for_params(params, line))
 
@@ -250,16 +283,15 @@ def get_class_fields(source: Source):
 
 
 def get_init_fields(source: Source):
-    for line_num, line in enumerate(source):
-        if match_signature('def __init__', line):
-            fields = []
-            init_source, _ = detect_block(source, line_num)
-            for line in init_source[1:]:
-                if match_signature('self.', line) and is_field(line):
-                    fields.append(line)
-            return fields
+    fields = []
 
-    return []
+    if (init_line_num := find_line_with_sig('def __init__', source)) is not None:
+        init_source, _ = detect_block(source, init_line_num)
+        for line in init_source[1:]:
+            if match_signature('self.', line) and is_field(line):
+                fields.append(line)
+
+    return fields
 
 
 def add_empty_line(source: Source):
@@ -267,29 +299,54 @@ def add_empty_line(source: Source):
         source[-1] += '\n'
 
 
-def detect_setattr(source: Source):
+def find_line_with_sig(signature: str, source: Source):
     for line_num, line in enumerate(source):
-        if match_signature('def __setattr__', line):
+        if match_signature(signature, line):
             return line_num
 
+    return None
+
+
+def find_or_insert(signature: str, lines_to_insert: Source, source: Source, insert_at_ind=1):
+    if (sig_line_num := find_line_with_sig(signature, source)) is not None:
+        return sig_line_num
+
     # else
-    ident_lines = gen_lines_with_ident(source[0],
-                                       inspect.getsource(__setattr__).splitlines())
+    line_before_insertion = source[insert_at_ind - 1]
+    ident_lines = gen_lines_with_ident(line_before_insertion, lines_to_insert)
     add_empty_line(ident_lines)
-    insert_lines(source, 1, ident_lines)
-    return 1
+    insert_lines(source, insert_at_ind, ident_lines)
+    return insert_at_ind
+
+
+def add_setattr_checks(fields: Fields, source: Source):
+    setattr_line_num = find_or_insert('def __setattr__',
+                                      inspect.getsource(__setattr__).splitlines(),
+                                      source)
+
+    check_lines = gen_checks_for_params(params=fields, base_ident_line=source[setattr_line_num], class_fields=True)
+    insert_lines(source, setattr_line_num + 1, check_lines)
+
+
+def json(fields: Fields):
+    pass
+
+
+def add_json_method(fields: Fields, source: Source):
+    json_line_num = find_or_insert('def __setattr__',
+                                   inspect.getsource(__setattr__).splitlines(),
+                                   source)
 
 
 def transpile_class(source: Source):
     fields = get_class_fields(source)
-    if init_fields := get_init_fields(source):
-        fields.extend(init_fields)
+    fields.extend(get_init_fields(source))
+
+    fields = parse_params(fields)
+    fields = remove_self_prefix(fields)
 
     if fields:
-        setattr_line_num = detect_setattr(source)
-
-        check_lines = gen_checks_for_params(params=fields, base_ident_line=source[setattr_line_num], class_fields=True)
-        insert_lines(source, setattr_line_num + 1, check_lines)
+        add_setattr_checks(fields, source)
 
     return source
 
@@ -416,6 +473,6 @@ def prepare_and_transpile(base_dir):
 if __name__ == '__main__':
     cur_project = Path(__file__).parent.resolve()
     bet_matcher = Path(r'/home/user/PycharmProjects/BetMatcher3/BetMatcher')
-
+    tests_only_dir = cur_project / 'tests_dir'
     prepare_and_transpile(cur_project)
     prepare_and_transpile(bet_matcher)
