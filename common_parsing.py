@@ -30,28 +30,49 @@ def get_ident(line):
     return line[:ident_len]
 
 
-def increase_ident(ident):
-    return ident + SINGLE_IDENT
-
-
 def get_increased_ident(line):
-    return increase_ident(get_ident(line))
+    return get_ident(line) + SINGLE_IDENT
+
+
+def get_decreased_ident(line):
+    return get_ident(line).removesuffix(SINGLE_IDENT)
 
 
 def gen_lines_with_ident(base_ident_line, lines):
-    base_ident = get_increased_ident(base_ident_line)
+    ident = get_increased_ident(base_ident_line)
     res = []
     for line in lines:
-        res.append(f'{base_ident}{line}')
-        if match_signature('if ', line):
-            base_ident = get_increased_ident(base_ident)
+        if match_signature('if', line):
+            res.append(f'{ident}{line}')
+            ident = get_increased_ident(ident)
+            continue
+
+        if '{' in line and '}' not in line:
+            res.append(f'{ident}{line}')
+            ident = get_increased_ident(ident)
+            continue
+
+        if '}' in line and '{' not in line:
+            ident = get_decreased_ident(ident)
+            res.append(f'{ident}{line}')
+            continue
+
+        res.append(f'{ident}{line}')
 
     return res
 
 
-def insert_lines(source: Source, index: int, lines):
+def insert_lines(lines: Source, source: Source, insert_at_ind: int):
     for line_ind, line in enumerate(lines):
-        source.insert(index + line_ind, line)
+        source.insert(insert_at_ind + line_ind, line)
+
+
+def insert_pretty_lines(lines_to_insert: Source, source: Source, insert_at_ind=1):
+    line_before_insertion = source[insert_at_ind - 1]
+    ident_lines = gen_lines_with_ident(line_before_insertion, lines_to_insert)
+    add_empty_line(ident_lines)
+    insert_lines(ident_lines, source, insert_at_ind)
+    return insert_at_ind
 
 
 def remove_comment_lines(source: Source):
@@ -90,9 +111,13 @@ def parse_param(param: str):
 
     arg_name, arg_type = param.split(':')
     if '=' in arg_type:
-        arg_type = arg_type.split('=')[0]
+        arg_type, arg_value = arg_type.split('=')
+        arg_value = arg_value.strip()
+    else:
+        arg_value = None
 
-    arg_name, arg_type = arg_name.strip(), arg_type.strip()
+    arg_name = arg_name.strip()
+    arg_type = arg_type.strip()
 
     if not arg_name:
         raise ParsingError('Argument name is empty')
@@ -100,49 +125,48 @@ def parse_param(param: str):
     if not arg_type:
         raise ParsingError('Argument type is empty')
 
-    return arg_name, arg_type
+    return Param(arg_name, arg_type, arg_value)
 
 
 def parse_params(params: list[str]):
     parsed_params = []
     for param in params:
         try:
-            arg_name, arg_type = parse_param(param)
-            parsed_params.append((arg_name, arg_type))
+            parsed_params.append(parse_param(param))
         except NoTypeSpecified:
             pass
 
     return parsed_params
 
 
-def gen_check_lines(arg_name: str, arg_type: str, base_ident_line, class_fields):
+def gen_checks_for_params(params: Fields, base_ident_line, class_fields=False):
+    check_lines = []
     if class_fields:
-        check_lines = [
-            f'if name == "{arg_name}":',
-            f'check_type("{arg_name}", value, {arg_type})'
-        ]
-    else:
-        check_lines = [
-            f'check_type("{arg_name}", {arg_name}, {arg_type})'
-        ]
+        check_lines.extend(['from functools import partial', '{'])
+
+    for param in params:
+        if class_fields:
+            check_line = f'"{param.name}": partial(check_type, "{param.name}", value, {param.type}),'
+        else:
+            check_line = f'check_type("{param.name}", {param.name}, {param.type})'
+
+        check_lines.append(check_line)
+
+    if class_fields:
+        check_lines.append('}[name]()')
 
     check_lines = gen_lines_with_ident(base_ident_line, check_lines)
+    add_empty_line(check_lines)
+
     return check_lines
-
-
-def gen_checks_for_params(params: Fields, base_ident_line, class_fields=False):
-    res = []
-    for param in params:
-        arg_name, arg_type = param
-        for check_line in gen_check_lines(arg_name, arg_type, base_ident_line, class_fields):
-            res.append(check_line)
-
-    add_empty_line(res)
-    return res
 
 
 def match_signature(signature: str, line: str):
     return line.lstrip().startswith(signature)
+
+
+def r_match_signature(signature: str, line: str):
+    return line.rstrip().endswith(signature)
 
 
 def match_any_signature(sign_list, line):
@@ -160,7 +184,7 @@ def match_signature_only(signature, blacklist: list[str], line: str):
 
 
 def add_empty_line(source: Source):
-    if source:
+    if len(source) > 1:
         source[-1] += '\n'
 
 
@@ -180,6 +204,7 @@ def transpile(source: str):
     source = transpile_funcs(source)
 
     source = '\n'.join(source)
+    source += '\n'
 
     from injectable import insert_header_funcs
     source = insert_header_funcs(source)

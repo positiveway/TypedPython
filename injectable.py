@@ -25,11 +25,28 @@ def check_type(arg_name, value, arg_type):
 
 # check_type('sdf', ['sf'], list)
 
-def dict(obj, fields: list[tuple[str, str]]):
+def obj_to_dict(obj):
     from inspect import isclass
-    for field in fields:
-        field_name, field_type = field
-        val = getattr(obj, field_name)
+    from typing import get_origin
+
+    if isclass(obj):
+        return obj.dict()
+    else:
+        collection_type = get_origin(type(obj))
+        if collection_type is None:
+            return obj
+        else:
+            if collection_type == dict:
+                res = {}
+                for key, val in obj:
+                    res[key] = obj_to_dict(val)
+                return res
+
+            else:
+                res = []
+                for val in obj:
+                    res.append(obj_to_dict(val))
+                return res
 
 
 def insert_header_func(func, source):
@@ -39,7 +56,7 @@ def insert_header_func(func, source):
 
 
 def insert_header_funcs(source):
-    funcs = [dict, check_type]
+    funcs = [obj_to_dict, check_type]
     for func in funcs:
         source = insert_header_func(func, source)
 

@@ -2,13 +2,8 @@ from common_parsing import *
 
 
 def remove_self_prefix(fields: Fields):
-    res = []
     for field in fields:
-        arg_name, arg_type = field
-        arg_name = arg_name.removeprefix('self.')
-        res.append((arg_name, arg_type))
-
-    return res
+        field.name = field.name.removeprefix('self.')
 
 
 def ident_is_more_or_equal(base_ident, line):
@@ -73,20 +68,12 @@ def find_line_with_sig(signature: str, source: Source):
     return None
 
 
-def insert_pretty_lines(lines_to_insert: Source, source: Source, insert_at_ind=1):
-    line_before_insertion = source[insert_at_ind - 1]
-    ident_lines = gen_lines_with_ident(line_before_insertion, lines_to_insert)
-    add_empty_line(ident_lines)
-    insert_lines(source, insert_at_ind, ident_lines)
-
-
 def find_or_insert(signature: str, lines_to_insert: Source, source: Source, insert_at_ind=1):
     if (sig_line_num := find_line_with_sig(signature, source)) is not None:
         return sig_line_num
 
     # else
-    insert_pretty_lines(lines_to_insert, source, insert_at_ind)
-    return insert_at_ind
+    return insert_pretty_lines(lines_to_insert, source, insert_at_ind)
 
 
 def add_setattr_checks(fields: Fields, source: Source):
@@ -98,11 +85,20 @@ def add_setattr_checks(fields: Fields, source: Source):
                                       source)
 
     check_lines = gen_checks_for_params(params=fields, base_ident_line=source[setattr_line_num], class_fields=True)
-    insert_lines(source, setattr_line_num + 1, check_lines)
+    insert_lines(check_lines, source, setattr_line_num + 1)
 
 
 def add_dict_method(fields: Fields, source: Source):
-    pass
+    def_line_index = insert_pretty_lines(['def dict(self):'], source)
+
+    injectable_code = ['return {']
+    for field in fields:
+        line = f'"{field.name}": obj_to_dict(self.{field.name}),'
+        injectable_code.append(line)
+
+    injectable_code.append('}')
+
+    insert_pretty_lines(injectable_code, source, def_line_index + 1)
 
 
 def transpile_class(source: Source):
@@ -110,10 +106,11 @@ def transpile_class(source: Source):
     fields.extend(get_init_fields(source))
 
     fields = parse_params(fields)
-    fields = remove_self_prefix(fields)
+    remove_self_prefix(fields)
 
     if fields:
         add_setattr_checks(fields, source)
+        add_dict_method(fields, source)
 
     return source
 

@@ -32,3 +32,7 @@ class Deck:
     def __init__(self, p: float, t: str) -> None:
         self.p: float = p
         self.t: str = t
+
+
+if __name__ == '__main__':
+    deck = Deck('sf', 'kd')
