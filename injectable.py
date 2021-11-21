@@ -6,8 +6,15 @@ def check_type(arg_name, value, arg_type):
     from typing import get_origin, get_args
 
     def check_single_value(_value, _type):
-        if not isinstance(_value, _type):
-            raise TypeError(f'"{arg_name}" type is not "{arg_type}"')
+        error = TypeError(f'"{arg_name}" type is not "{arg_type}"')
+        if _type in [float, int]:
+            try:
+                _value = _type(_value)
+            except (TypeError, ValueError):
+                raise error
+
+        elif not isinstance(_value, _type):
+            raise error
 
     collection_type = get_origin(arg_type)
     if collection_type is not None:
