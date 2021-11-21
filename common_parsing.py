@@ -139,22 +139,8 @@ def parse_params(params: list[str]):
     return parsed_params
 
 
-def gen_checks_for_params(params: Fields, base_ident_line, class_fields=False):
-    check_lines = []
-    if class_fields:
-        check_lines.extend(['from functools import partial', '{'])
-
-    for param in params:
-        if class_fields:
-            check_line = f'"{param.name}": partial(check_type, "{param.name}", value, {param.type}),'
-        else:
-            check_line = f'check_type("{param.name}", {param.name}, {param.type})'
-
-        check_lines.append(check_line)
-
-    if class_fields:
-        check_lines.append('}[name]()')
-
+def gen_checks_for_params(params: Fields, base_ident_line, gen_func):
+    check_lines = gen_func(params)
     check_lines = gen_lines_with_ident(base_ident_line, check_lines)
     add_empty_line(check_lines)
 

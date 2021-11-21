@@ -76,6 +76,17 @@ def find_or_insert(signature: str, lines_to_insert: Source, source: Source, inse
     return insert_pretty_lines(lines_to_insert, source, insert_at_ind)
 
 
+def gen_checks(params: Fields):
+    check_lines = ['from functools import partial', '{']
+    for param in params:
+        check_line = f'"{param.name}": partial(check_type, "{param.name}", value, {param.type}),'
+        check_lines.append(check_line)
+
+    check_lines.append('}[name]()')
+
+    return check_lines
+
+
 def add_setattr_checks(fields: Fields, source: Source):
     from injectable import __setattr__
     from inspect import getsource
@@ -84,7 +95,7 @@ def add_setattr_checks(fields: Fields, source: Source):
                                       getsource(__setattr__).splitlines(),
                                       source)
 
-    check_lines = gen_checks_for_params(params=fields, base_ident_line=source[setattr_line_num], class_fields=True)
+    check_lines = gen_checks_for_params(params=fields, base_ident_line=source[setattr_line_num], gen_func=gen_checks)
     insert_lines(check_lines, source, setattr_line_num + 1)
 
 
