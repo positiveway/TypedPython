@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Union
 
 saf = str
 
@@ -17,6 +17,11 @@ sfd = '''
 adsfadf
 '''
 
+
+class MultiLangEvent:
+    id: int
+    ru_event: Union[dict, list]
+    en_event: Union[dict, list]
 
 def collection_types(ttype: tuple[int, list] = (1, 2), num: int = 0):
     pass

@@ -67,4 +67,5 @@ def insert_header_funcs(source):
     for func in funcs:
         source = insert_header_func(func, source)
 
+    source = 'from functools import partial\n\n' + source
     return source

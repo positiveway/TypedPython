@@ -79,7 +79,7 @@ def find_or_insert(signature: str, lines_to_insert: Source, source: Source):
 
 
 def gen_checks(params: Fields):
-    check_lines = ['from functools import partial', '{']
+    check_lines = ['{']
     for param in params:
         check_line = f'"{param.name}": partial(check_type, "{param.name}", value, {param.type}),'
         check_lines.append(check_line)
