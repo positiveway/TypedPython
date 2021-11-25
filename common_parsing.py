@@ -62,17 +62,19 @@ def gen_lines_with_ident(base_ident_line, lines):
     return res
 
 
-def insert_lines(lines: Source, source: Source, insert_at_ind: int):
+def insert_lines(lines: Source, source: Source, insert_after_line: int):
+    insert_at_ind = insert_after_line + 1
     for line_ind, line in enumerate(lines):
         source.insert(insert_at_ind + line_ind, line)
 
+    return insert_at_ind
 
-def insert_pretty_lines(lines_to_insert: Source, source: Source, insert_at_ind=1):
-    line_before_insertion = source[insert_at_ind - 1]
+
+def insert_pretty_lines(lines_to_insert: Source, source: Source, insert_after_line=0):
+    line_before_insertion = source[insert_after_line]
     ident_lines = gen_lines_with_ident(line_before_insertion, lines_to_insert)
     add_empty_line(ident_lines)
-    insert_lines(ident_lines, source, insert_at_ind)
-    return insert_at_ind
+    return insert_lines(ident_lines, source, insert_after_line)
 
 
 def remove_comment_lines(source: Source):

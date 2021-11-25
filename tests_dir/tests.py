@@ -25,7 +25,7 @@ class Deck:
             print('passed')
 
     mine: int
-    his: str
+    his: str = 's'
     all: list[int]
     simple: tuple
 
@@ -35,4 +35,6 @@ class Deck:
 
 
 if __name__ == '__main__':
-    deck = Deck('sf', 'kd')
+    deck = Deck(3, [], (), 5, 'kd')
+    print(deck.dict())
+    deck = Deck(3, [], (), 'sf', 'kd')

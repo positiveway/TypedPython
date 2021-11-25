@@ -7,7 +7,7 @@ def check_type(arg_name, value, arg_type):
 
     def check_single_value(_value, _type):
         error = TypeError(f'"{arg_name}" type is not "{arg_type}"')
-        if _type in [float, int]:
+        if _type == float:
             try:
                 _value = _type(_value)
             except (TypeError, ValueError):
