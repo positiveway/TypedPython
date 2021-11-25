@@ -18,6 +18,10 @@ adsfadf
 '''
 
 
+def collection_types(ttype: tuple[int, list] = (1, 2), num: int = 0):
+    pass
+
+
 class Deck:
     def expression(self, a, b, c):
         if a == 5 and b is True \
