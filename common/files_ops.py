@@ -1,13 +1,12 @@
 import shutil
 from pathlib import Path
+from common.parsing import full_transpile
 
-
-def transpile_file(filepath: Path):
+def transpile_file(filepath: Path, transpile_func):
     with open(filepath, mode='r', encoding='utf8') as file:
         content = file.read()
 
-    from common_parsing import transpile
-    content = transpile(content)
+    content = full_transpile(content,transpile_func)
     filepath = get_path_in_build(filepath)
 
     with open(filepath, mode='w+', encoding='utf8') as file:
@@ -45,7 +44,7 @@ def clean_any_content(folder: Path) -> None:
             shutil.rmtree(file_path)
 
 
-def transpile_project(basedir: Path):
+def transpile_project(basedir: Path, transpile_func):
     files = filter_files(basedir)
 
     for filepath in files:
@@ -53,7 +52,7 @@ def transpile_project(basedir: Path):
             make_dir(get_path_in_build(filepath))
         else:
             if filepath.match('*.py'):
-                transpile_file(filepath)
+                transpile_file(filepath, transpile_func)
             else:
                 shutil.copy2(filepath, get_path_in_build(filepath))
 
@@ -69,7 +68,7 @@ ignore_list = [
 ]
 
 
-def prepare_and_transpile(base_dir):
+def prepare_and_transpile(base_dir, transpile_func):
     global BASE_DIR
     BASE_DIR = base_dir
     print(BASE_DIR)
@@ -78,4 +77,4 @@ def prepare_and_transpile(base_dir):
     make_dir(build_dir)
     clean_any_content(build_dir)
 
-    transpile_project(BASE_DIR)
+    transpile_project(BASE_DIR, transpile_func)

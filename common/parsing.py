@@ -1,5 +1,5 @@
 import re
-from common_types import *
+from common.data_types import *
 
 
 def _concat_split(last_symbol_in_line, replacement, source):
@@ -175,8 +175,7 @@ def add_empty_line(source: Source):
     if len(source) > 1:
         source[-1] += '\n'
 
-
-def transpile(source: str):
+def preprocess_clean(source: str):
     source += '\n'
     source = source.splitlines()
     source = remove_all_comments(source)
@@ -184,17 +183,9 @@ def transpile(source: str):
 
     source = concat_split_expressions(source)
 
-    source = source.splitlines()
+    return source
 
-    from class_parsing import transpile_classes
-    from func_parsing import transpile_funcs
-    source = transpile_classes(source)
-    source = transpile_funcs(source)
-
-    source = '\n'.join(source)
-    source += '\n'
-
-    from injectable import insert_header_funcs
-    source = insert_header_funcs(source)
-
+def full_transpile(source:str,transpile_func):
+    source = preprocess_clean(source)
+    source = transpile_func(source)
     return source
