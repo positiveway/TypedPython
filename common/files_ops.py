@@ -2,15 +2,20 @@ import shutil
 from pathlib import Path
 from common.parsing import full_transpile
 
-def transpile_file(filepath: Path, transpile_func):
-    with open(filepath, mode='r', encoding='utf8') as file:
+
+def transpile_file(source_path: Path, dest_path: Path, transpile_func):
+    with open(source_path, mode='r', encoding='utf8') as file:
         content = file.read()
 
-    content = full_transpile(content,transpile_func)
-    filepath = get_path_in_build(filepath)
+    content = full_transpile(content, transpile_func)
 
-    with open(filepath, mode='w+', encoding='utf8') as file:
+    with open(dest_path, mode='w+', encoding='utf8') as file:
         file.write(content)
+
+
+def transpile_file_to_build(filepath: Path, transpile_func):
+    dest_path = get_path_in_build(filepath)
+    transpile_file(filepath, dest_path, transpile_func)
 
 
 def filter_files(base_directory: Path):
@@ -52,7 +57,7 @@ def transpile_project(basedir: Path, transpile_func):
             make_dir(get_path_in_build(filepath))
         else:
             if filepath.match('*.py'):
-                transpile_file(filepath, transpile_func)
+                transpile_file_to_build(filepath, transpile_func)
             else:
                 shutil.copy2(filepath, get_path_in_build(filepath))
 
@@ -68,10 +73,14 @@ ignore_list = [
 ]
 
 
-def prepare_and_transpile(base_dir, transpile_func):
+def define_base_dir(base_dir):
     global BASE_DIR
     BASE_DIR = base_dir
     print(BASE_DIR)
+
+
+def prepare_and_transpile(base_dir, transpile_func):
+    define_base_dir(base_dir)
 
     build_dir = get_build_dir()
     make_dir(build_dir)

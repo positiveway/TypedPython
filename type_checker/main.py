@@ -1,4 +1,5 @@
 from common.class_parsing import transpile_classes
+from common.parsing import final_join_source
 from type_checker.class_checks import transpile_class
 from type_checker.func_checks import transpile_funcs
 from pathlib import Path
@@ -10,8 +11,7 @@ def transpile(source: str):
     source = transpile_classes(source, transpile_class)
     source = transpile_funcs(source)
 
-    source = '\n'.join(source)
-    source += '\n'
+    source = final_join_source(source)
 
     from type_checker.injectable import insert_header_funcs
     source = insert_header_funcs(source)

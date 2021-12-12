@@ -5,9 +5,9 @@ Source = list[str]
 
 class Param:
     def __init__(self, name, type, value) -> None:
-        self.name = name
-        self.type = type
-        self.value = value
+        self.name: str = name
+        self.type: str = type
+        self.value: str = value
 
 
 Fields = list[Param]

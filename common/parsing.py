@@ -130,7 +130,7 @@ def parse_param(param: str):
     return Param(arg_name, arg_type, arg_value)
 
 
-def parse_params(params: list[str]):
+def parse_params(params: list[str]) -> list[Param]:
     parsed_params = []
     for param in params:
         try:
@@ -175,6 +175,7 @@ def add_empty_line(source: Source):
     if len(source) > 1:
         source[-1] += '\n'
 
+
 def preprocess_clean(source: str):
     source += '\n'
     source = source.splitlines()
@@ -185,7 +186,14 @@ def preprocess_clean(source: str):
 
     return source
 
-def full_transpile(source:str,transpile_func):
+
+def final_join_source(source: Source):
+    source = '\n'.join(source)
+    source += '\n'
+    return source
+
+
+def full_transpile(source: str, transpile_func):
     source = preprocess_clean(source)
     source = transpile_func(source)
     return source

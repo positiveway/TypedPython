@@ -50,6 +50,17 @@ def cut_class_fields(source: Source):
     return fields, res
 
 
+def split_cls_fields(class_fields: Fields):
+    not_defined, pre_defined = [], []
+    for class_field in class_fields:
+        if class_field.value is None:
+            not_defined.append(class_field)
+        else:
+            pre_defined.append(class_field)
+
+    return not_defined, pre_defined
+
+
 def get_init_fields(source: Source):
     fields = []
 

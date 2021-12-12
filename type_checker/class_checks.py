@@ -41,17 +41,6 @@ def filter_duplicate_cls_fields(class_fields: Fields, init_fields: Fields):
     return [class_field for class_field in class_fields if class_field.name not in init_fields_names]
 
 
-def split_cls_fields(class_fields: Fields):
-    not_defined, pre_defined = [], []
-    for class_field in class_fields:
-        if class_field.value is None:
-            not_defined.append(class_field)
-        else:
-            pre_defined.append(class_field)
-
-    return not_defined, pre_defined
-
-
 def conv_fields_to_func_sig_str(fields: Fields):
     fields_as_str = []
     for field in fields:
