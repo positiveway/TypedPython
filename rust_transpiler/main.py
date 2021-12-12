@@ -1,6 +1,6 @@
 from pathlib import Path
 from common.class_parsing import *
-from common.files_ops import define_base_dir, get_build_dir, make_dir, clean_any_content
+from common.files_ops import define_base_dir, prepare_build_dir
 
 
 def transpile(source: str):
@@ -81,14 +81,10 @@ def convert_lines(source: str):
 
 def convert():
     cur_project = Path(__file__).parent.resolve()
-    define_base_dir(cur_project)
-
-    build_dir = get_build_dir()
-    make_dir(build_dir)
-    clean_any_content(build_dir)
+    build_dir = prepare_build_dir(cur_project)
 
     input_file = cur_project / 'input.py'
-    output_file = cur_project / build_dir / 'input.rs'
+    output_file = cur_project / build_dir / 'output.rs'
 
     from common.files_ops import transpile_file
     transpile_file(input_file, output_file, convert_lines)

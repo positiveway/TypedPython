@@ -79,11 +79,17 @@ def define_base_dir(base_dir):
     print(BASE_DIR)
 
 
-def prepare_and_transpile(base_dir, transpile_func):
+def prepare_build_dir(base_dir):
     define_base_dir(base_dir)
 
     build_dir = get_build_dir()
     make_dir(build_dir)
     clean_any_content(build_dir)
+
+    return build_dir
+
+
+def prepare_and_transpile(base_dir, transpile_func):
+    prepare_build_dir(base_dir)
 
     transpile_project(BASE_DIR, transpile_func)
