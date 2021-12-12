@@ -138,19 +138,3 @@ def transpile_class(source: Source):
     return source
 
 
-def transpile_classes(source: Source):
-    res = []
-    line_num = 0
-    while line_num < len(source):
-        line = source[line_num]
-        if match_signature('class ', line):
-            class_source, block_end = detect_block(source, line_num)
-            class_source = transpile_class(class_source)
-            res.extend(class_source)
-            line_num = block_end
-            continue
-        else:
-            res.append(line)
-            line_num += 1
-
-    return res

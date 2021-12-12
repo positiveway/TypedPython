@@ -76,3 +76,21 @@ def find_or_insert(signature: str, lines_to_insert: Source, source: Source):
 
     # else
     return insert_pretty_lines(lines_to_insert, source)
+
+
+def transpile_classes(source: Source, transpile_func):
+    res = []
+    line_num = 0
+    while line_num < len(source):
+        line = source[line_num]
+        if match_signature('class ', line):
+            class_source, block_end = detect_block(source, line_num)
+            class_source = transpile_func(class_source)
+            res.extend(class_source)
+            line_num = block_end
+            continue
+        else:
+            res.append(line)
+            line_num += 1
+
+    return res
